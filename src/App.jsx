@@ -25,10 +25,15 @@ function App() {
   const userState = useSelector((state) => state.user)
   const isAuthenticated = userState?.isAuthenticated || false
 
+  // Load saved theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('darkMode')
-  
-  // Initialize ApperUI once when the app loads
+    if (savedTheme) {
+      setDarkMode(JSON.parse(savedTheme))
+    }
+  }, [])
+
+  // Initialize ApperUI once when the app loads  
   useEffect(() => {
     const { ApperClient, ApperUI } = window.ApperSDK;
     const client = new ApperClient({
@@ -98,10 +103,6 @@ function App() {
       }
     });
   }, [navigate, dispatch]);
-    if (savedTheme) {
-      setDarkMode(JSON.parse(savedTheme))
-    }
-  }, [])
 
   useEffect(() => {
     if (darkMode) {
