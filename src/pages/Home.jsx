@@ -5,8 +5,8 @@ import { motion } from 'framer-motion'
 import MainFeature from '../components/MainFeature'
 import { toast } from 'react-toastify'
 import ApperIcon from '../components/ApperIcon'
+
 function Home({ darkMode }) {
-function Home() {
   const { logout } = useContext(AuthContext)
   const { user } = useSelector((state) => state.user)
   
@@ -16,22 +16,17 @@ function Home() {
       toast.success(`Welcome back, ${user.firstName}!`)
     }
   }, [user?.firstName])
+
   const [activeView, setActiveView] = useState('board')
 
   const stats = [
     { icon: 'CheckCircle2', label: 'Completed Tasks', value: '24', color: 'text-green-500' },
     { icon: 'Clock', label: 'In Progress', value: '8', color: 'text-yellow-500' },
-          {user?.firstName ? `${user.firstName}'s Tasks` : 'My Tasks'}
+    { icon: 'List', label: user?.firstName ? `${user.firstName}'s Tasks` : 'My Tasks', value: '32', color: 'text-primary-500' },
     { icon: 'Target', label: 'This Week', value: '44', color: 'text-blue-500' }
   ]
-        <div className="flex items-center space-x-3 flex-wrap gap-2">
-          <button
-            onClick={logout}
-            className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm flex items-center gap-1"
-          >
-            <ApperIcon name="LogOut" className="h-4 w-4" /> Logout
-          </button>
-          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-soft p-1 border border-surface-200/50 dark:border-surface-700/50 ml-auto">
+
+  const viewOptions = [
     { id: 'board', icon: 'Kanban', label: 'Board View' },
     { id: 'list', icon: 'List', label: 'List View' },
     { id: 'calendar', icon: 'Calendar', label: 'Calendar' }
@@ -64,7 +59,6 @@ function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
-      <MainFeature activeView={activeView} darkMode={darkMode} />
               >
                 <div className="flex items-center justify-between mb-2">
                   <ApperIcon name={stat.icon} className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
@@ -81,6 +75,15 @@ function Home() {
 
           {/* View Toggle */}
           <div className="flex justify-center mb-8">
+            <div className="flex items-center space-x-3 flex-wrap gap-2">
+              <button
+                onClick={logout}
+                className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm flex items-center gap-1"
+              >
+                <ApperIcon name="LogOut" className="h-4 w-4" /> Logout
+              </button>
+            </div>
+            
             <div className="bg-white/70 dark:bg-surface-800/70 backdrop-blur-sm rounded-2xl p-2 shadow-soft border border-surface-200/50 dark:border-surface-700/50">
               <div className="flex space-x-1">
                 {viewOptions.map((option) => (
@@ -110,7 +113,7 @@ function Home() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3, duration: 0.6 }}
         >
-          <MainFeature activeView={activeView} />
+          <MainFeature activeView={activeView} darkMode={darkMode} />
         </motion.div>
 
         {/* Quick Actions Footer */}
