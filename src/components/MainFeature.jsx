@@ -3,54 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import { format } from 'date-fns'
 import ApperIcon from './ApperIcon'
+import taskService from '../services/taskService'
+import categoryService from '../services/categoryService'
 
-function MainFeature({ activeView }) {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: 'Design user interface mockups',
-      description: 'Create wireframes and mockups for the new dashboard',
-      status: 'to-do',
-      priority: 'high',
-      dueDate: '2024-01-25',
-      category: 'Design',
-      tags: ['UI/UX', 'Dashboard']
-    },
-    {
-      id: 2,
-      title: 'Implement authentication system',
-      description: 'Set up user login and registration functionality',
-      status: 'in-progress',
-      priority: 'high',
-      dueDate: '2024-01-28',
-      category: 'Development',
-      tags: ['Backend', 'Security']
-    },
-    {
-      id: 3,
-      title: 'Write project documentation',
-      description: 'Create comprehensive documentation for the API',
-      status: 'completed',
-      priority: 'medium',
-      dueDate: '2024-01-20',
-      category: 'Documentation',
-      tags: ['API', 'Documentation']
-    }
-  ])
+function MainFeature({ activeView, darkMode }) {
+  const [tasks, setTasks] = useState([])
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [loadingForm, setLoadingForm] = useState(false)
 
   const [showModal, setShowModal] = useState(false)
   const [editingTask, setEditingTask] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [draggedTask, setDraggedTask] = useState(null)
+  const [error, setError] = useState(null)
 
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    dueDate: '',
-    category: 'General',
-    tags: ''
+    title: '', description: '', priority: 'medium', dueDate: '', category: 'General', tags: ''
   })
 
   const priorities = {
@@ -72,11 +42,50 @@ function MainFeature({ activeView }) {
     return matchesSearch && matchesFilter
   })
 
-  const handleSubmit = (e) => {
+  // Fetch tasks and categories on component mount
+  useEffect(() => {
+    const fetchTasksAndCategories = async () => {
+      setLoading(true)
+      try {
+        const [fetchedTasks, fetchedCategories] = await Promise.all([
+          taskService.getTasks({ status: filterStatus === 'all' ? '' : filterStatus, searchTerm }),
+          categoryService.getCategories()
+        ])
+        setTasks(fetchedTasks)
+        setCategories(fetchedCategories)
+        setError(null)
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        setError('Failed to load tasks. Please try again.')
+        toast.error('Failed to load tasks')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchTasksAndCategories()
+  }, [filterStatus, searchTerm])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoadingForm(true)
     
     if (!formData.title.trim()) {
       toast.error('Task title is required')
+      setLoadingForm(false)
+      return
+    }
+    
+    // Validate date format if present
+    if (formData.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(formData.dueDate)) {
+      toast.error('Due date must be in YYYY-MM-DD format')
+      setLoadingForm(false)
+      return
+    }
+    
+    if (!['low', 'medium', 'high'].includes(formData.priority)) {
+      toast.error('Please select a valid priority')
+      setLoadingForm(false)
       return
     }
 
@@ -88,14 +97,30 @@ function MainFeature({ activeView }) {
     }
 
     if (editingTask) {
-      setTasks(tasks.map(task => task.id === editingTask.id ? taskData : task))
-      toast.success('Task updated successfully!')
+      try {
+        const updatedTask = await taskService.updateTask(editingTask.id, taskData)
+        setTasks(tasks.map(task => task.id === editingTask.id ? updatedTask : task))
+        toast.success('Task updated successfully!')
+        resetForm()
+      } catch (error) {
+        console.error('Error updating task:', error)
+        toast.error(error.message || 'Failed to update task')
+      } finally {
+        setLoadingForm(false)
+      }
     } else {
-      setTasks([...tasks, taskData])
-      toast.success('Task created successfully!')
+      try {
+        const newTask = await taskService.createTask(taskData)
+        setTasks([newTask, ...tasks])
+        toast.success('Task created successfully!')
+        resetForm()
+      } catch (error) {
+        console.error('Error creating task:', error)
+        toast.error(error.message || 'Failed to create task')
+      } finally {
+        setLoadingForm(false)
+      }
     }
-
-    resetForm()
   }
 
   const resetForm = () => {
@@ -124,15 +149,26 @@ function MainFeature({ activeView }) {
     setShowModal(true)
   }
 
-  const handleDelete = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId))
-    toast.success('Task deleted successfully!')
+  const handleDelete = async (taskId) => {
+    try {
+      await taskService.deleteTask(taskId)
+      setTasks(tasks.filter(task => task.id !== taskId))
+      toast.success('Task deleted successfully!')
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast.error(error.message || 'Failed to delete task')
+    }
   }
 
-  const handleStatusChange = (taskId, newStatus) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ))
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      const task = tasks.find(t => t.id === taskId)
+      await taskService.updateTask(taskId, { ...task, status: newStatus })
+      setTasks(tasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task))
+    } catch (error) {
+      console.error('Error changing task status:', error)
+      toast.error('Failed to update task status')
+    }
     toast.success(`Task moved to ${statusColumns[newStatus].title}`)
   }
 
@@ -269,7 +305,10 @@ function MainFeature({ activeView }) {
               {config.title}
             </h3>
             <span className="px-2 py-1 bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded-lg text-sm font-medium">
-              {filteredTasks.filter(task => task.status === status).length}
+              {loading ? (
+                <span className="animate-pulse-soft">...</span>
+              ) : (
+                filteredTasks.filter(task => task.status === status).length)}
             </span>
           </div>
           
@@ -278,6 +317,11 @@ function MainFeature({ activeView }) {
               {filteredTasks
                 .filter(task => task.status === status)
                 .map(task => renderTaskCard(task))}
+              {loading && filteredTasks.filter(task => task.status === status).length === 0 && (
+                <div className="bg-white dark:bg-surface-800 rounded-xl p-4 sm:p-6 shadow-soft text-center">
+                  <div className="animate-pulse-soft">Loading tasks...</div>
+                </div>
+              )}
             </AnimatePresence>
           </div>
         </div>
@@ -290,7 +334,11 @@ function MainFeature({ activeView }) {
       <div className="p-4 sm:p-6 border-b border-surface-200 dark:border-surface-700">
         <h3 className="font-bold text-lg sm:text-xl text-surface-800 dark:text-surface-100">
           All Tasks
+          {loading && <span className="ml-2 animate-pulse-soft text-sm text-surface-500">(Loading...)</span>}
         </h3>
+        {error && (
+          <p className="mt-2 text-red-500 text-sm">{error}</p>
+        )}
       </div>
       <div className="divide-y divide-surface-200 dark:divide-surface-700">
         <AnimatePresence>
@@ -352,6 +400,15 @@ function MainFeature({ activeView }) {
             </motion.div>
           ))}
         </AnimatePresence>
+        
+        {loading && filteredTasks.length === 0 && (
+          <div className="p-6 text-center">
+            <div className="animate-pulse-soft">Loading tasks...</div>
+          </div>
+        )}
+        {!loading && filteredTasks.length === 0 && (
+          <div className="p-6 text-center text-surface-500">No tasks found</div>
+        )}
       </div>
     </div>
   )
@@ -379,7 +436,7 @@ function MainFeature({ activeView }) {
           <div className="relative flex-1 max-w-md">
             <ApperIcon name="Search" className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-surface-400" />
             <input
-              type="text"
+            type="text" 
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -403,7 +460,7 @@ function MainFeature({ activeView }) {
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center justify-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-medium rounded-xl hover:from-primary-600 hover:to-secondary-600 transition-all duration-200 shadow-glow hover:shadow-lg transform hover:scale-105"
-        >
+          disabled={loading}>
           <ApperIcon name="Plus" className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="text-sm sm:text-base">Add Task</span>
         </button>
@@ -515,14 +572,27 @@ function MainFeature({ activeView }) {
                     <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
                       Category
                     </label>
-                    <input
-                      type="text"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
-                      placeholder="e.g., Development"
-                    />
-                  </div>
+                    {categories.length > 0 ? (
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                      >
+                        {categories.map(category => (
+                          <option key={category.id} value={category.name}>{category.name}</option>
+                        ))}
+                        <option value="General">General</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full px-4 py-3 bg-surface-50 dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                        placeholder="e.g., Development"
+                      />
+                    )}
+                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
@@ -550,6 +620,7 @@ function MainFeature({ activeView }) {
                   <button
                     type="submit"
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-medium rounded-xl hover:from-primary-600 hover:to-secondary-600 transition-all duration-200 shadow-glow hover:shadow-lg transform hover:scale-105"
+                    disabled={loadingForm}
                   >
                     {editingTask ? 'Update Task' : 'Create Task'}
                   </button>

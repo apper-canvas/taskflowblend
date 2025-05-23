@@ -1,45 +1,28 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
-  tasks: [
-    {
-      id: 1,
-      title: 'Complete project proposal',
-      description: 'Write and submit the Q4 project proposal document',
-      priority: 'high',
-      status: 'pending',
-      dueDate: '2024-01-15',
-      category: 'Work',
-      completed: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 2,
-      title: 'Review team performance',
-      description: 'Conduct quarterly performance reviews for team members',
-      priority: 'medium',
-      status: 'in-progress',
-      dueDate: '2024-01-20',
-      category: 'Management',
-      completed: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 3,
-      title: 'Update documentation',
-      description: 'Update API documentation with recent changes',
-      priority: 'low',
-      status: 'completed',
-      dueDate: '2024-01-10',
-      category: 'Development',
-      completed: true,
-      createdAt: new Date().toISOString()
-    }
-  ],
+  tasks: [],
   filter: 'all',
   searchTerm: '',
-  selectedCategory: 'all'
+  selectedCategory: 'all',
+  loading: false,
+  error: null
 }
+
+export const fetchTasks = () => async (dispatch) => {
+  try {
+    dispatch(setLoading(true));
+    const tasks = await taskService.getTasks();
+    dispatch(setTasks(tasks));
+    dispatch(setError(null));
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    dispatch(setError('Failed to fetch tasks. Please try again.'));
+  } finally {
+    dispatch(setLoading(false));
+  }
+};
+
 
 const tasksSlice = createSlice({
   name: 'tasks',
@@ -79,6 +62,15 @@ const tasksSlice = createSlice({
     },
     setSelectedCategory: (state, action) => {
       state.selectedCategory = action.payload
+    },
+    setTasks: (state, action) => {
+      state.tasks = action.payload
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload
+    },
+    setError: (state, action) => {
+      state.error = action.payload
     }
   }
 })
@@ -90,7 +82,10 @@ export const {
   toggleTaskComplete,
   setFilter,
   setSearchTerm,
-  setSelectedCategory
+  setSelectedCategory,
+  setTasks,
+  setLoading,
+  setError
 } = tasksSlice.actions
 
 export default tasksSlice.reducer

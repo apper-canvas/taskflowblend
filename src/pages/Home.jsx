@@ -1,19 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { useSelector } from 'react-redux'
+import { AuthContext } from '../App'
 import { motion } from 'framer-motion'
 import MainFeature from '../components/MainFeature'
+import { toast } from 'react-toastify'
 import ApperIcon from '../components/ApperIcon'
-
+function Home({ darkMode }) {
 function Home() {
+  const { logout } = useContext(AuthContext)
+  const { user } = useSelector((state) => state.user)
+  
+  useEffect(() => {
+    // Welcome toast notification for logged in users
+    if (user?.firstName) {
+      toast.success(`Welcome back, ${user.firstName}!`)
+    }
+  }, [user?.firstName])
   const [activeView, setActiveView] = useState('board')
 
   const stats = [
     { icon: 'CheckCircle2', label: 'Completed Tasks', value: '24', color: 'text-green-500' },
     { icon: 'Clock', label: 'In Progress', value: '8', color: 'text-yellow-500' },
-    { icon: 'AlertCircle', label: 'Pending', value: '12', color: 'text-red-500' },
+          {user?.firstName ? `${user.firstName}'s Tasks` : 'My Tasks'}
     { icon: 'Target', label: 'This Week', value: '44', color: 'text-blue-500' }
   ]
-
-  const viewOptions = [
+        <div className="flex items-center space-x-3 flex-wrap gap-2">
+          <button
+            onClick={logout}
+            className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm flex items-center gap-1"
+          >
+            <ApperIcon name="LogOut" className="h-4 w-4" /> Logout
+          </button>
+          <div className="bg-white dark:bg-surface-800 rounded-xl shadow-soft p-1 border border-surface-200/50 dark:border-surface-700/50 ml-auto">
     { id: 'board', icon: 'Kanban', label: 'Board View' },
     { id: 'list', icon: 'List', label: 'List View' },
     { id: 'calendar', icon: 'Calendar', label: 'Calendar' }
@@ -46,7 +64,7 @@ function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
-                className="bg-white/70 dark:bg-surface-800/70 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-soft hover:shadow-card transition-all duration-300 border border-surface-200/50 dark:border-surface-700/50"
+      <MainFeature activeView={activeView} darkMode={darkMode} />
               >
                 <div className="flex items-center justify-between mb-2">
                   <ApperIcon name={stat.icon} className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
