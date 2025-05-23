@@ -10,7 +10,12 @@ function Signup() {
     if (isInitialized) {
       // Show signup UI in this component
       const { ApperUI } = window.ApperSDK;
-      ApperUI.showSignup("#authentication");
+      ApperUI.showSignup("#authentication", {
+        settings: {
+          showHeader: true,
+          showLabels: true
+        }
+      });
     }
   }, [isInitialized]);
 

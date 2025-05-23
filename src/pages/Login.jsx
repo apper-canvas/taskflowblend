@@ -10,7 +10,12 @@ function Login() {
     if (isInitialized) {
       // Show login UI in this component
       const { ApperUI } = window.ApperSDK;
-      ApperUI.showLogin("#authentication");
+      ApperUI.showLogin("#authentication", {
+        settings: {
+          showHeader: true,
+          showLabels: true
+        }
+      });
     }
   }, [isInitialized]);
 
